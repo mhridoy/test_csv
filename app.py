@@ -1,34 +1,23 @@
-import streamlit as st
-import cv2
-from pyzbar.pyzbar import decode
-from PIL import Image
-import numpy as np
+import base64
+import struct
 
-st.title("QR Code Scanner")
+def zatca_qr_decoder(encoded_data):
+    """Decodes ZATCA (Saudi VAT Invoice) QR Code."""
+    tag_types = {1: "Seller", 2: "VAT Number", 3: "Timestamp", 4: "Total", 5: "VAT"}
+    
+    try:
+        decoded_bytes = base64.b64decode(encoded_data)
+        index = 0
+        output = {}
 
-# Function to decode QR codes
-def decode_qr(image):
-    decoded_objects = decode(image)
-    for obj in decoded_objects:
-        st.write("Type:", obj.type)
-        st.write("Data:", obj.data.decode("utf-8"))
-        # Draw a rectangle around the QR code
-        pts = np.array(obj.polygon, np.int32)
-        pts = pts.reshape((-1, 1, 2))
-        cv2.polylines(image, [pts], True, (0, 255, 0), 3)
-    return image
+        while index < len(decoded_bytes):
+            tag = decoded_bytes[index]
+            length = decoded_bytes[index + 1]
+            value = decoded_bytes[index + 2 : index + 2 + length].decode("utf-8")
 
-# Capture image from user
-uploaded_file = st.file_uploader("Upload an image containing a QR code", type=["jpg", "jpeg", "png"])
+            output[tag_types.get(tag, f"Unknown ({tag})")] = value
+            index += 2 + length
 
-if uploaded_file is not None:
-    # Convert the file to an OpenCV image
-    file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
-    image = cv2.imdecode(file_bytes, 1)
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-    # Decode the QR code
-    decoded_image = decode_qr(image)
-
-    # Display the image with QR code highlighted
-    st.image(decoded_image, caption='Processed Image', use_column_width=True)
+        return output
+    except Exception as e:
+        return f"Decoding Error: {str(e)}"
