@@ -1,4 +1,4 @@
 streamlit
 opencv-python-headless
 pyzbar
-streamlit-webrtc
+Pillow
